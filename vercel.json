@@ -4,5 +4,5 @@
   "devCommand": "npm run dev",
   "framework": "vite",
   "cleanUrls": true,
-  "env": []
+  "env": {}
 }
