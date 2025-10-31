@@ -1,0 +1,34 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output
+dist
+dist-ssr
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Vite
+.vite
+
+# Testing
+coverage
+.nyc_output
+
+# Logs
+npm-debug.log
+pnpm-debug.log
+
+# Vercel
+.vercel
