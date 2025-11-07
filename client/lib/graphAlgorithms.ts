@@ -36,33 +36,13 @@ export interface AlgorithmResult {
 export class GraphAlgorithms {
   static buildAdjacencyList(nodes: GraphNode[], edges: GraphEdge[]): AdjacencyList {
     const adjList: AdjacencyList = {};
-
-    // Initialize all nodes
-    for (const node of nodes) {
-      if (!adjList[node.id]) {
-        adjList[node.id] = [];
-      }
-    }
-
-    // Add edges
-    for (const edge of edges) {
-      if (!adjList[edge.source]) {
-        adjList[edge.source] = [];
-      }
-      adjList[edge.source].push({
-        node: edge.destination,
-        weight: edge.weight,
-      });
-    }
-
+    nodes.forEach(n => adjList[n.id] = []);
+    edges.forEach(e => adjList[e.source].push({ node: e.destination, weight: e.weight }));
     return adjList;
   }
 
-  static dijkstra(
-    nodes: GraphNode[],
-    edges: GraphEdge[],
-    sourceNode: string
-  ): AlgorithmResult {
+  /** ✅ DIJKSTRA ALGORITHM */
+  static dijkstra(nodes: GraphNode[], edges: GraphEdge[], sourceNode: string): AlgorithmResult {
     const adjList = this.buildAdjacencyList(nodes, edges);
     const steps: AlgorithmStep[] = [];
     const distances: Record<string, number> = {};
@@ -70,37 +50,32 @@ export class GraphAlgorithms {
     const visited = new Set<string>();
     const shortestPathTree: GraphEdge[] = [];
 
-    // Initialize
-    for (const node of nodes) {
-      distances[node.id] = node.id === sourceNode ? 0 : Infinity;
-      previous[node.id] = null;
-    }
+    nodes.forEach(n => {
+      distances[n.id] = n.id === sourceNode ? 0 : Infinity;
+      previous[n.id] = null;
+    });
 
     steps.push({
       type: 'initial',
       iteration: 0,
       distances: { ...distances },
       previous: { ...previous },
-      message: `Initialize: Set distance to ${sourceNode} as 0, others as ∞`,
+      message: `Initialize Dijkstra: ${sourceNode}=0, others=∞`
     });
 
     let iteration = 1;
 
     while (visited.size < nodes.length) {
-      // Find unvisited node with minimum distance
       let minNode: string | null = null;
       let minDist = Infinity;
 
-      for (const node of nodes) {
-        if (!visited.has(node.id) && distances[node.id] < minDist) {
-          minDist = distances[node.id];
-          minNode = node.id;
+      for (const n of nodes) {
+        if (!visited.has(n.id) && distances[n.id] < minDist) {
+          minDist = distances[n.id];
+          minNode = n.id;
         }
       }
-
-      if (minNode === null || minDist === Infinity) {
-        break;
-      }
+      if (!minNode) break;
 
       visited.add(minNode);
 
@@ -110,190 +85,134 @@ export class GraphAlgorithms {
         currentNode: minNode,
         distances: { ...distances },
         previous: { ...previous },
-        message: `Select node ${minNode} with distance ${minDist}`,
+        message: `Select ${minNode} with dist = ${minDist}`
       });
 
-      // Relax edges
-      const neighbors = adjList[minNode] || [];
-      const updatedNodes: string[] = [];
-
-      for (const { node: neighbor, weight } of neighbors) {
+      for (const { node: neighbor, weight } of adjList[minNode]) {
         const newDist = distances[minNode] + weight;
 
         if (newDist < distances[neighbor]) {
           distances[neighbor] = newDist;
           previous[neighbor] = minNode;
-          updatedNodes.push(neighbor);
 
           steps.push({
             type: 'relax',
             iteration,
-            currentNode: minNode,
             currentEdge: { source: minNode, destination: neighbor },
             distances: { ...distances },
             previous: { ...previous },
             updatedNodes: [neighbor],
-            message: `Relax edge ${minNode}→${neighbor}: update distance to ${newDist}`,
+            message: `Relax ${minNode}→${neighbor}, new dist=${newDist}`
           });
         }
       }
-
       iteration++;
     }
 
-    // Build shortest path tree
-    for (const node of nodes) {
-      if (previous[node.id] !== null && previous[node.id] !== undefined) {
-        const edge = edges.find(
-          (e) =>
-            e.source === previous[node.id] &&
-            e.destination === node.id
-        );
-        if (edge) {
-          shortestPathTree.push(edge);
-        }
+    nodes.forEach(n => {
+      if (previous[n.id]) {
+        const e = edges.find(e => e.source === previous[n.id] && e.destination === n.id);
+        if (e) shortestPathTree.push(e);
       }
-    }
+    });
 
     steps.push({
       type: 'complete',
       iteration,
       distances: { ...distances },
       previous: { ...previous },
-      message: 'Algorithm complete',
+      message: `Dijkstra complete`
     });
 
-    return {
-      distances,
-      previous,
-      steps,
-      hasNegativeCycle: false,
-      shortestPathTree,
-    };
+    return { distances, previous, steps, hasNegativeCycle: false, shortestPathTree };
   }
 
-  static bellmanFord(
-    nodes: GraphNode[],
-    edges: GraphEdge[],
-    sourceNode: string
-  ): AlgorithmResult {
+  /** ✅ BELLMAN-FORD ALGORITHM */
+  static bellmanFord(nodes: GraphNode[], edges: GraphEdge[], sourceNode: string): AlgorithmResult {
     const steps: AlgorithmStep[] = [];
     const distances: Record<string, number> = {};
     const previous: Record<string, string | null> = {};
     const shortestPathTree: GraphEdge[] = [];
 
-    // Initialize
-    for (const node of nodes) {
-      distances[node.id] = node.id === sourceNode ? 0 : Infinity;
-      previous[node.id] = null;
-    }
+    nodes.forEach(n => {
+      distances[n.id] = n.id === sourceNode ? 0 : Infinity;
+      previous[n.id] = null;
+    });
 
     steps.push({
       type: 'initial',
       iteration: 0,
       distances: { ...distances },
       previous: { ...previous },
-      message: `Initialize: Set distance to ${sourceNode} as 0, others as ∞`,
+      message: `Initialize Bellman-Ford: ${sourceNode}=0, others=∞`
     });
 
-    let iteration = 1;
-
-    // Relax edges n-1 times
-    for (let i = 0; i < nodes.length - 1; i++) {
+    // ✅ Relax edges |V|-1 times
+    for (let i = 1; i <= nodes.length - 1; i++) {
       let relaxed = false;
 
-      for (const edge of edges) {
-        const { source, destination, weight } = edge;
+      for (const { source, destination, weight } of edges) {
 
-        if (distances[source] !== Infinity) {
-          const newDist = distances[source] + weight;
+        if (distances[source] !== Infinity && distances[source] + weight < distances[destination]) {
+          distances[destination] = distances[source] + weight;
+          previous[destination] = source;
+          relaxed = true;
 
-          if (newDist < distances[destination]) {
-            distances[destination] = newDist;
-            previous[destination] = source;
-            relaxed = true;
-
-            steps.push({
-              type: 'relax',
-              iteration,
-              currentEdge: { source, destination },
-              distances: { ...distances },
-              previous: { ...previous },
-              updatedNodes: [destination],
-              message: `Iteration ${i + 1}: Relax ${source}→${destination}, distance = ${newDist}`,
-            });
-          }
+          steps.push({
+            type: 'relax',
+            iteration: i,
+            currentEdge: { source, destination },
+            distances: { ...distances },
+            previous: { ...previous },
+            updatedNodes: [destination],
+            message: `Iteration ${i}: Relax ${source}→${destination}`
+          });
         }
       }
 
       if (!relaxed) {
         steps.push({
           type: 'update',
-          iteration,
+          iteration: i,
           distances: { ...distances },
           previous: { ...previous },
-          message: `Iteration ${i + 1}: No updates`,
+          message: `Iteration ${i}: No updates`
         });
-      }
-
-      iteration++;
-    }
-
-    // Check for negative cycle
-    let hasNegativeCycle = false;
-    for (const edge of edges) {
-      const { source, destination, weight } = edge;
-
-      if (distances[source] !== Infinity) {
-        const newDist = distances[source] + weight;
-
-        if (newDist < distances[destination]) {
-          hasNegativeCycle = true;
-
-          steps.push({
-            type: 'negative_cycle',
-            iteration,
-            currentEdge: { source, destination },
-            distances: { ...distances },
-            previous: { ...previous },
-            message: `⚠️ Negative weight cycle detected: ${source}→${destination}`,
-          });
-
-          break;
-        }
+        break;
       }
     }
 
-    // Build shortest path tree
-    for (const node of nodes) {
-      if (previous[node.id] !== null && previous[node.id] !== undefined) {
-        const edge = edges.find(
-          (e) =>
-            e.source === previous[node.id] &&
-            e.destination === node.id
-        );
-        if (edge) {
-          shortestPathTree.push(edge);
-        }
+    // ✅ Detect negative cycle
+    for (const { source, destination, weight } of edges) {
+      if (distances[source] + weight < distances[destination]) {
+        steps.push({
+          type: 'negative_cycle',
+          iteration: nodes.length,
+          currentEdge: { source, destination },
+          distances: { ...distances },
+          previous: { ...previous },
+          message: `⚠️ Negative cycle detected at ${source}→${destination}`
+        });
+
+        return { distances, previous, steps, hasNegativeCycle: true, shortestPathTree: [] };
       }
     }
+
+    nodes.forEach(n => {
+      if (previous[n.id]) {
+        const e = edges.find(e => e.source === previous[n.id] && e.destination === n.id);
+        if (e) shortestPathTree.push(e);
+      }
+    });
 
     steps.push({
       type: 'complete',
-      iteration,
+      iteration: nodes.length,
       distances: { ...distances },
       previous: { ...previous },
-      message: hasNegativeCycle
-        ? 'Algorithm complete - Negative cycle detected'
-        : 'Algorithm complete',
+      message: `Bellman-Ford complete — no negative cycle`
     });
 
-    return {
-      distances,
-      previous,
-      steps,
-      hasNegativeCycle,
-      shortestPathTree,
-    };
+    return { distances, previous, steps, hasNegativeCycle: false, shortestPathTree };
   }
 }

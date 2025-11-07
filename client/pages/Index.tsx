@@ -317,13 +317,14 @@ export default function Index() {
 
         {/* Right Panel - Distance Table and Controls (Only when running) */}
         {isRunning && steps.length > 0 && (
-          <div className="w-60 bg-white rounded-lg shadow-sm p-2.5 flex flex-col flex-shrink-0 overflow-hidden">
+          <div className="w-120 bg-white rounded-lg shadow-sm p-2.5 flex flex-col flex-shrink-0 overflow-hidden">
             <h3 className="text-xs font-semibold text-gray-900 uppercase mb-2">Distance Table</h3>
             <div className="flex-1 overflow-y-auto mb-2">
               <DistanceTable
                 nodes={nodes}
                 currentStep={currentStepData}
                 result={result}
+                algorithm={selectedAlgorithm}
               />
             </div>
 
